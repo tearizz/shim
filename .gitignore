@@ -12,7 +12,6 @@ Make.local
 *.domain.txt
 *.efi
 !efi/*.efi
-NvVars
 *.efi.debug
 *.efi.signed
 *.esl
