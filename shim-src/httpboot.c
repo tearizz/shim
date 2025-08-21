@@ -778,3 +778,38 @@ error:
 
 	return efi_status;
 }
+
+EFI_STATUS
+httpboot_fetch_buffer_uri(EFI_HANDLE image, EFI_HANDLE nic_handle,
+                          CHAR8 *user_uri, VOID **buffer, UINT64 *buf_size)
+{
+	EFI_STATUS efi_status;
+	CHAR8 *hostname = NULL;
+
+	if (!user_uri)
+		return EFI_NOT_READY;
+
+	/* Extract the hostname (or IP) from URI */
+	efi_status = extract_hostname(user_uri, &hostname);
+	if (EFI_ERROR(efi_status)) {
+		perror(L"hostname: %a, %r\n", hostname, efi_status);
+		goto error;
+	}
+
+	/* Use HTTP protocl to fetch the remote file */
+	efi_status = http_fetch(image, nic_handle, hostname, user_uri, is_ip6,
+	                        buffer, buf_size);
+	if (EFI_ERROR(efi_status)) {
+		perror(L"Failed to fetch image: %r\n", efi_status);
+		goto error;
+	}
+
+error:
+	FreePool(user_uri);
+	user_uri = NULL;
+	if (hostname)
+		FreePool(hostname);
+
+	return efi_status;
+}
+

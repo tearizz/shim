@@ -355,3 +355,11 @@ archive: tag
 
 export ARCH CC CROSS_COMPILE LD OBJCOPY EFI_INCLUDE EFI_INCLUDES OPTIMIZATIONS
 export FEATUREFLAGS WARNFLAGS WERRFLAGS
+
+# Make http-request.efi
+HR_OBJS = http-request.o  globals.o  errlog.o sbat_data.o httpboot.o 
+
+http-request.so: $(HR_OBJS) $(LIBS)
+	$(LD)	-o	$@	$(LDFLAGS)	$^	$(EFI_LIBS)	lib/lib.a
+	
+http-request.efi : http-request.so post-process-pe
