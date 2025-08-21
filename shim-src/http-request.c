@@ -272,12 +272,14 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE * systab){
     console_print(L"Enter efi_main\n");
 
     // `python3 -m http.server 8888` on isrc server
+	
     CHAR8 uri[] = "http://10.20.173.8:8888/";
     efi_status = send_http_get_request(image_handle, uri);
     if (EFI_ERROR(efi_status)) {
         perror(L"Failed to send http get request\n");
         goto exit_main;
     }
+
 
 exit_main:
     return efi_status;

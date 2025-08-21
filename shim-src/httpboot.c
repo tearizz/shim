@@ -453,6 +453,7 @@ send_http_request (EFI_HTTP_PROTOCOL *http, CHAR8 *hostname, CHAR8 *uri)
 	request.Url = Url;
 
 	/* Prepare the HTTP headers */
+	console_print(L"Send http request url=%s hostname=%a\n",Url,hostname);
 	headers[0].FieldName = (CHAR8 *)"Host";
 	headers[0].FieldValue = hostname;
 	headers[1].FieldName = (CHAR8 *)"Accept";
