@@ -238,7 +238,7 @@ send_http_get_request(EFI_HANDLE image_handle, CHAR8 *uri)
 			goto break_loop;
 		}
 		console_print(L"Get http response size=%d\n", datasize);
-        console_print(L"Get http response body:%a\n\nptal?", data);           
+        console_print(L"Get http response body:%a\n", data);           
     
         if(data){
             BS->FreePool(data);

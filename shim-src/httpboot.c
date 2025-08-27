@@ -442,7 +442,6 @@ send_http_request (EFI_HTTP_PROTOCOL *http, CHAR8 *hostname, CHAR8 *uri)
 	EFI_HTTP_MESSAGE tx_message;
 	EFI_HTTP_REQUEST_DATA request;
 	EFI_HTTP_HEADER headers[7];
-	// UINTN header_count;
 	BOOLEAN request_done;
 	CHAR16 *Url = NULL;
 	EFI_STATUS efi_status;
