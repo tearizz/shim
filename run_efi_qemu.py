@@ -71,11 +71,10 @@ logger = logging.getLogger(__name__)
     Following is the logic implementation section
 """
 def checkfile(esp:Path, code:Path, var:Path):
-    # esp.exists()
-    # def checkfile(esp, code, var):
+    esp.exists()
     missing = []
     for f in [esp, code, var]:
-        if  f.exists():
+        if not f.exists():
             missing.append(str(f))
     if missing:
         logger.error("Missing: %s", ", ".join(missing))
@@ -83,7 +82,6 @@ def checkfile(esp:Path, code:Path, var:Path):
     else:
         logger.info("All neccessary files are in place")
 
-    print()
 
 def run_qemu():
     command = [
