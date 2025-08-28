@@ -1,107 +1,130 @@
 #!/usr/bin/env python3
 import os 
 import sys
-import shutil
 import subprocess
+import logging
 from pathlib import Path
 
+script_dir= Path(__file__).resolve().parent
+esp = script_dir/"esp" 
+var = script_dir/"qemu"/"vars.fd"   # ovmf vars
+code = script_dir/"qemu"/"code.fd"  # ovmf code
 
-# efi_src = sys.argv[1]
-# efi_file_dir = os.getenv("HOME") + "/codespace/material/efi_file/esp/efi/"
-# esp_dir = os.getenv("HOME") + "/codespace/material/efi_file/esp/" 
-esp_dir = os.getenv("HOME") + "/codespace/temp/shim/esp/"
-ovmf_var = os.getenv("HOME") + "/codespace/material/qemu/ovmf/x64/vars.fd"
-ovmf_code = os.getenv("HOME") + "/codespace/material/qemu/ovmf/x64/code.fd"
+def setup_logger(name=__name__,log_level=logging.INFO,log_file=None):
+    """
+    Terms:
+        Logger  记录器：捕获日志时间，但本身并不处理日志的输出
+        Handler 处理器：将日志时间发送到不同目的地（控制台、文件等），每个处理器可单独设置日志级别与格式
+        Formatter 格式：定义日志记录的输出格式
 
-def main():
-    # if sys.argv[1] == "--help" or sys.argv[1] == "-h":
-    #     help()
+    Args:
+        name: name of logger (module name better)
+        log_level: DEBUG/ INFO/ WARNING/ ERROR/ CRITICAL
+        log_file: path of log file (optional)
+    Returns:
+        logger
+    """
+    # create logger
+    # 一个记录器可以有多个处理器，可同时分别输出到不同地方
+    # 不同处理器可以设置不同的级别和格式，如控制台输出简洁格式，文件记录详细格式
+    logger = logging.getLogger(name)
+    logger.setLevel(log_level)
+
+    # log format("%(module)s")
+    log_format = "%(asctime)s|%(levelname)-8s|line %(lineno)d:\t%(message)s"
     
-    # src,dst = checkfile(efi_src, efi_file_dir)
+    date_format = "%Y-%m-%d %H:%M:%S"
 
-    # copyfile(src,dst)
+    # create console handler 
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_formatter = logging.Formatter(log_format,datefmt=date_format)
+    console_handler.setFormatter(console_formatter)
+    # add to logger
+    logger.addHandler(console_handler)
 
-    run_qemu()
-    # is_file_in_current_dir(sys.argv[1])
-    # copyfile(sys.argv[1], "efi_file")
-    # copy target file to efi_file 
-    # copyfile 
-    # run qemu with efi_file 
+    # optional: file logger 
+    if log_file:
+        # create log dir automatically
+        os.makedirs(os.path.dirname(log_file),exist_ok=True)
+        file_handler = logging.FileHandler(log_file,encoding='utf-8')
+        file_formatter = logging.Formatter(log_format,datefmt='date_format')
+        file_handler.setFormatter(file_formatter)
+        logger.addHandler(file_handler)
 
-def checkfile(src,dst):
-    if (os.path.exists(efi_src) is False) and os.path.isdir(src):
-        print(f"{efi_src} does not exist or is a directory.")
-        exit(1) 
-    if not os.path.exists(dst):
-        print(f"{dst} does not exist.")
-        exit(1)
-    
-    # complete dst path
-    if os.path.isdir(dst):
-        dest_path = os.path.join(dst, os.path.basename(src))
+    return logger
+
+# Initialization Logger
+logger = setup_logger(__name__,logging.DEBUG)
+
+""" Logger Basic Config
+logging.basicConfig(
+    level = logging.INFO,
+    format= '%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+"""
+
+"""
+    Following is the logic implementation section
+"""
+def checkfile(esp:Path, code:Path, var:Path):
+    esp.exists()
+    missing = []
+    for f in [esp, code, var]:
+        if not f.exists():
+            missing.append(str(f))
+    if missing:
+        logger.error("Missing: %s", ", ".join(missing))
+        raise FileNotFoundError("Missing file: " + ", ".join(missing))
     else:
-        dest_path = dst
+        logger.info("All neccessary files are in place")
 
-    return src,dest_path
-
-def copyfile(src, dst):
-    # Previdous code checks if the src exists
-
-    # only check single file now 
-    shutil.copy2(src, dst)
-    print(f"Copied {src} to {dst}")
 
 def run_qemu():
     command = [
-        "sudo",
-        "qemu-system-x86_64",
-        "-nodefaults",
-        "-device", "virtio-rng-pci",
-        "-boot", "menu=on,splash-time=0",
-        "-machine", "q35",
-        "-smp", "4",
-        "-m", "256M",
-        "-vga", "std",
-        "--enable-kvm",
-        "-cpu", "host,vmx=on",
-        "-no-reboot",
+        "sudo","-S", "qemu-system-x86_64",
+        "-nodefaults", "-boot", "menu=on,splash-time=0",
+        "-machine", "q35", "-smp", "4", "-m", "256M", "-vga", "std",
+        "--enable-kvm", "-cpu", "host,vmx=on", "-no-reboot",
         "-fw_cfg", "name=opt/org.tianocore/X-Cpuhp-Bugcheck-Override,string=yes",
         "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
-        "-debugcon", "file:./integration-test-debugcon.log",
-        "-drive", f"if=pflash,format=raw,readonly=on,file={ovmf_code}",
-        "-drive", f"if=pflash,format=raw,readonly=on,file={ovmf_var}",
-        "-device", "virtio-scsi-pci",
+        "-drive", f"if=pflash,format=raw,readonly=on,file={code}",
+        "-drive", f"if=pflash,format=raw,readonly=on,file={var}",
+        "-device", "virtio-scsi-pci", "-device", "virtio-rng-pci",
         "-netdev", "user,id=net0,net=192.168.17.0/24",
         "-device", "virtio-net-pci,netdev=net0,mac=52:54:00:00:00:01",
-        "-drive", f"format=raw,file=fat:rw:{esp_dir}"
+        "-drive", f"format=raw,file=fat:rw:{esp}"
         ]
 
-    try:  
-        result = subprocess.run(
-            command,
-            check = True,
-            text = True,
-            capture_output = True)
-    except subprocess.CalledProcessError as e:
-        print(f"command exec failed: {e.returncode}")
-        print(f"stdout: {e.stdout}")
-        print(f"stderr: {e.stderr}")
-    except Exception as e:
-        print(f"exception: {e}")
-        exit(1)
+    try:
+        logger.info("boot qemu")
+        logger.debug("\n%s"," ".join(command))
+
+        result = subprocess.run(command)
+        if result.returncode ==0 :
+            logger.info("qemu quit normally")
+            return True
+        else:
+            logger.error("qemu quit abnormally: %d", result.returncode)
+            return False
+    except KeyboardInterrupt:
+        logger.warning("User Interrupt")
     
 
-def help():
-    print("Usage: python run_efi_qemu.py <filename>")
-    print("This script checks if the specified file exists in the current directory.")
-    exit(0)
+def main():
+    checkfile(esp,code,var) 
+    run_qemu()
+
 
 if __name__ =="__main__":
     try:
         main()
+    except KeyboardInterrupt:
+        logger.info("User Interrupt, Program Exit.")
+        exit(1)
     except Exception as e:
         print(f"An error occurred: {e}")
         exit(1)
-    else:
-        print("Script executed successfully.")
-        exit(0)

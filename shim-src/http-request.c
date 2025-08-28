@@ -7,8 +7,8 @@
 #include "shim.h"
 #include "http.h"
 
-
-#define SAME_MAC_ADDR(a, b) (!CompareMem(a, b, sizeof(EFI_MAC_ADDRESS)))
+EFI_HTTP_METHOD http_request_method;
+CHAR8 *tx_body_json = NULL;
 
 EFI_STATUS
 print_device_path(EFI_HANDLE image_handle,
@@ -272,14 +272,18 @@ efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE * systab){
     console_print(L"Enter efi_main\n");
 
     // `python3 -m http.server 8888` on isrc server
+	// http_request_method = HttpMethodGet;	
+	// CHAR8 uri[] = "http://10.20.173.8:8888/";
 	
-    CHAR8 uri[] = "http://10.20.173.8:8888/";
+    CHAR8 uri[] = "http://10.20.173.8:80/v1/keypair";    
+	http_request_method = HttpMethodPost;
+	tx_body_json="{\"algo\":\"sm2\",\"kms\":\"\",\"flow\":\"classic\"}";	
+
     efi_status = send_http_get_request(image_handle, uri);
     if (EFI_ERROR(efi_status)) {
         perror(L"Failed to send http get request\n");
         goto exit_main;
     }
-
 
 exit_main:
     return efi_status;
